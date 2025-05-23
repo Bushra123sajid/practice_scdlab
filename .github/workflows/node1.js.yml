@@ -18,28 +18,33 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
+      
     - name: Build and start services
       run: |
-        docker-compose up -d --build
-
+        docker compose up -d --build
+        
     - name: Wait for services
       run: |
         sleep 30
-
+        
     - name: Test backend
       run: |
         curl -f http://localhost:5000
-
+        
     - name: Test frontend
       run: |
         curl -f http://localhost:3000
-
+        
     - name: Show running containers
       run: |
         docker ps
-
+        
+    - name: Show logs for debugging
+      if: failure()
+      run: |
+        docker compose logs
+        
     - name: Cleanup
       if: always()
       run: |
-        docker-compose down
+        docker compose down
