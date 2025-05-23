@@ -1,6 +1,3 @@
-# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
-
 name: Test Docker Compose
 
 on:
@@ -23,44 +20,52 @@ jobs:
       run: |
         docker compose up -d --build
         
+    - name: Show running containers
+      run: |
+        echo "=== Running containers ==="
+        docker ps
+        echo "=========================="
+        
     - name: Wait for services to be ready
       run: |
         echo "Waiting for services to start..."
         sleep 10
         
         # Wait for backend to be ready (up to 60 seconds)
+        echo "=== Testing backend connectivity ==="
         for i in {1..12}; do
           if curl -f -s http://localhost:5000 > /dev/null 2>&1; then
-            echo "Backend is ready!"
+            echo "✅ Backend is ready!"
             break
           fi
-          echo "Waiting for backend... (attempt $i/12)"
+          echo "⏳ Waiting for backend... (attempt $i/12)"
           sleep 5
         done
         
         # Wait for frontend to be ready (up to 60 seconds)
+        echo "=== Testing frontend connectivity ==="
         for i in {1..12}; do
           if curl -f -s http://localhost:3000 > /dev/null 2>&1; then
-            echo "Frontend is ready!"
+            echo "✅ Frontend is ready!"
             break
           fi
-          echo "Waiting for frontend... (attempt $i/12)"
+          echo "⏳ Waiting for frontend... (attempt $i/12)"
           sleep 5
         done
         
     - name: Test backend
       run: |
-        echo "Testing backend endpoint..."
-        curl -f -v http://localhost:5000
+        echo "=== Testing backend endpoint ==="
+        curl -f http://localhost:5000
+        echo ""
+        echo "✅ Backend test completed"
         
     - name: Test frontend
       run: |
-        echo "Testing frontend endpoint..."
-        curl -f -v http://localhost:3000
-        
-    - name: Show running containers
-      run: |
-        docker ps
+        echo "=== Testing frontend endpoint ==="
+        curl -f http://localhost:3000
+        echo ""
+        echo "✅ Frontend test completed"
         
     - name: Show logs for debugging
       if: failure()
