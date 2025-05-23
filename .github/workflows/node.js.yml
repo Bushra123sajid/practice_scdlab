@@ -14,21 +14,16 @@ on:
 jobs:
   build-deploy:
     runs-on: self-hosted
-
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+    
     - name: Set up Docker environment
       run: |
         echo "Configuring Docker to use Minikube's daemon..."
         eval $(minikube docker-env)
-    - name: Login to Docker Hub
-      env:
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      run: |
-        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-        
+    
     - name: Build Backend Docker Image
       run: |
         cd backend
@@ -38,7 +33,14 @@ jobs:
       run: |
         cd frontend
         docker build -t bushrasajid/frontend:${{ github.sha }} .
-        
+    
+    - name: Login to Docker Hub
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      run: |
+        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    
     - name: Push Backend Image to Docker Hub
       run: |
         docker push bushrasajid/backend:${{ github.sha }}
@@ -46,6 +48,7 @@ jobs:
     - name: Push Frontend Image to Docker Hub
       run: |
         docker push bushrasajid/frontend:${{ github.sha }}
+
     - name: Deploy to Minikube
       run: |
         # Apply Kubernetes configurations
@@ -55,6 +58,7 @@ jobs:
         kubectl apply -f backend-service.yaml
         kubectl apply -f frontend-deployment.yaml
         kubectl apply -f frontend-service.yaml
+    
     - name: Verify Deployment
       run: |
         kubectl get deployments
