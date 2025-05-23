@@ -23,17 +23,40 @@ jobs:
       run: |
         docker compose up -d --build
         
-    - name: Wait for services
+    - name: Wait for services to be ready
       run: |
-        sleep 30
+        echo "Waiting for services to start..."
+        sleep 10
+        
+        # Wait for backend to be ready (up to 60 seconds)
+        for i in {1..12}; do
+          if curl -f -s http://localhost:5000 > /dev/null 2>&1; then
+            echo "Backend is ready!"
+            break
+          fi
+          echo "Waiting for backend... (attempt $i/12)"
+          sleep 5
+        done
+        
+        # Wait for frontend to be ready (up to 60 seconds)
+        for i in {1..12}; do
+          if curl -f -s http://localhost:3000 > /dev/null 2>&1; then
+            echo "Frontend is ready!"
+            break
+          fi
+          echo "Waiting for frontend... (attempt $i/12)"
+          sleep 5
+        done
         
     - name: Test backend
       run: |
-        curl -f http://localhost:5000
+        echo "Testing backend endpoint..."
+        curl -f -v http://localhost:5000
         
     - name: Test frontend
       run: |
-        curl -f http://localhost:3000
+        echo "Testing frontend endpoint..."
+        curl -f -v http://localhost:3000
         
     - name: Show running containers
       run: |
