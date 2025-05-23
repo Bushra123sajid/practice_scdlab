@@ -1,0 +1,45 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
+
+name: Test Docker Compose
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-compose:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build and start services
+      run: |
+        docker-compose up -d --build
+
+    - name: Wait for services
+      run: |
+        sleep 30
+
+    - name: Test backend
+      run: |
+        curl -f http://localhost:5000
+
+    - name: Test frontend
+      run: |
+        curl -f http://localhost:3000
+
+    - name: Show running containers
+      run: |
+        docker ps
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker-compose down
