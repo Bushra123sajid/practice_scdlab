@@ -1,0 +1,61 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
+
+name: Build and Deploy to Minikube
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-deploy:
+    runs-on: self-hosted
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Docker environment
+      run: |
+        echo "Configuring Docker to use Minikube's daemon..."
+        eval $(minikube docker-env)
+    
+    - name: Build Backend Docker Image
+      run: |
+        cd backend
+        docker build -t bushrasajid/backend:${{ github.sha }} .
+    
+    - name: Build Frontend Docker Image
+      run: |
+        cd frontend
+        docker build -t bushrasajid/frontend:${{ github.sha }} .
+    - name: Login to Docker Hub
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      run: |
+        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    - name: Push Backend Image to Docker Hub
+      run: |
+        docker push bushrasajid/backend:${{ github.sha }}
+    
+    - name: Push Frontend Image to Docker Hub
+      run: |
+        docker push bushrasajid/frontend:${{ github.sha }}
+    - name: Deploy to Minikube
+      run: |
+        # Apply Kubernetes configurations
+        kubectl apply -f mongodb_deployment.yaml
+        kubectl apply -f mongodb_service.yaml
+        kubectl apply -f backend-deployment.yaml
+        kubectl apply -f backend-service.yaml
+        kubectl apply -f frontend-deployment.yaml
+        kubectl apply -f frontend-service.yaml
+    - name: Verify Deployment
+      run: |
+        kubectl get deployments
+        kubectl get services
+        kubectl get pods
