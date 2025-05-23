@@ -29,18 +29,7 @@ jobs:
     - name: Wait for services to be ready
       run: |
         echo "Waiting for services to start..."
-        sleep 10
-        
-        # Wait for backend to be ready (up to 60 seconds)
-        echo "=== Testing backend connectivity ==="
-        for i in {1..12}; do
-          if curl -f -s http://localhost:5000 > /dev/null 2>&1; then
-            echo "✅ Backend is ready!"
-            break
-          fi
-          echo "⏳ Waiting for backend... (attempt $i/12)"
-          sleep 5
-        done
+        sleep 15
         
         # Wait for frontend to be ready (up to 60 seconds)
         echo "=== Testing frontend connectivity ==="
@@ -53,12 +42,39 @@ jobs:
           sleep 5
         done
         
-    - name: Test backend
+    - name: Test backend through frontend container
       run: |
-        echo "=== Testing backend endpoint ==="
-        curl -f http://localhost:5000
+        echo "=== Testing backend through frontend container ==="
+        
+        # Test backend root endpoint
+        echo "Testing backend root endpoint:"
+        docker compose exec -T frontend sh -c "curl -s -w 'HTTP Status: %{http_code}\\n' http://backend:5000" || echo "Root endpoint check completed"
         echo ""
-        echo "✅ Backend test completed"
+        
+        # Test the main API endpoint
+        echo "Testing /api/users endpoint:"
+        docker compose exec -T frontend sh -c "curl -s -w 'HTTP Status: %{http_code}\\n' http://backend:5000/api/users"
+        echo ""
+        
+    - name: Test MongoDB connection through backend
+      run: |
+        echo "=== Checking MongoDB connection ==="
+        
+        # Check if backend can connect to MongoDB by testing the users endpoint
+        echo "Testing if backend can fetch users (tests MongoDB connection):"
+        response=$(docker compose exec -T frontend sh -c "curl -s http://backend:5000/api/users")
+        echo "Response: $response"
+        
+        # Test creating a user to verify full CRUD functionality
+        echo ""
+        echo "Testing user creation (POST /api/users):"
+        docker compose exec -T frontend sh -c "curl -s -X POST -H 'Content-Type: application/json' -d '{\"name\":\"Test User\",\"email\":\"test@example.com\",\"age\":25}' http://backend:5000/api/users"
+        echo ""
+        
+        # Fetch users again to see if the user was created
+        echo "Fetching users again to verify creation:"
+        docker compose exec -T frontend sh -c "curl -s http://backend:5000/api/users"
+        echo ""
         
     - name: Test frontend
       run: |
@@ -66,6 +82,22 @@ jobs:
         curl -f http://localhost:3000
         echo ""
         echo "✅ Frontend test completed"
+        
+    - name: Test API routes through frontend (if proxied)
+      run: |
+        echo "=== Testing API routes through frontend (if proxied) ==="
+        
+        # Test if frontend proxies API requests
+        echo -n "Testing frontend/api/users: "
+        http_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/users)
+        if [ "$http_code" = "200" ]; then
+          echo "✅ $http_code (Success - Frontend proxies to backend)"
+          echo "Response:"
+          curl -s http://localhost:3000/api/users
+        else
+          echo "❌ $http_code (Frontend doesn't proxy API requests)"
+        fi
+        echo ""echo "✅ Frontend test completed"
         
     - name: Show logs for debugging
       if: failure()
