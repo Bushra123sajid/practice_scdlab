@@ -52,8 +52,8 @@ jobs:
     - name: Deploy to Minikube
       run: |
         # Apply Kubernetes configurations
-        kubectl apply -f mongodb_deployment.yaml
-        kubectl apply -f mongodb_service.yaml
+        kubectl apply -f mongodb-deployment.yaml
+        kubectl apply -f mongodb-service.yaml
         kubectl apply -f backend-deployment.yaml
         kubectl apply -f backend-service.yaml
         kubectl apply -f frontend-deployment.yaml
